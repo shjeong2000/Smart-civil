@@ -129,6 +129,9 @@ class StressTensor:
         self.internal_forces = internal_forces
 
     def axial_stress(self, axial_force):
+        # 축력이 없으면 0으로 가정
+        if axial_force == 0:
+            return 0
         area = self.beam.width * self.beam.height
         return axial_force / area
 
@@ -136,7 +139,8 @@ class StressTensor:
         return -(moment * y) / self.beam.I
 
     def shear_stress(self, shear_force, y, z):
-        Q = (self.beam.width * (self.beam.height / 2 - y) * y) / 2
+        # 정확한 Q 계산 적용
+        Q = (self.beam.width / 2) * ((self.beam.height**2) / 4 - y**2)
         b = self.beam.width if -self.beam.height / 2 < y < self.beam.height / 2 else 0
         if b == 0:
             return 0
@@ -171,7 +175,7 @@ def main():
     height = float(input("보의 높이 (mm): "))
     beam = Beam(length, width, height, beam_type)
 
-    support = Support(방긋)
+    support = Support(beam)
     loads = ExternalLoads()
 
     roller_x = float(input("롤러의 x 위치 (m)를 입력하세요: "))
@@ -236,7 +240,8 @@ def main():
     print(f"\n선택된 전단력 ({chosen_side}): {chosen_shear:.4f} kN")
     print(f"선택된 전단력을 사용한 굽힘 모멘트: {chosen_moment:.4f} kN*m")
 
-    tensor = stress_tensor_calculator.stress_tensor(x_position, y_position, z_position, -700, chosen_moment, chosen_shear)
+    # 축력(axial_force)을 0으로 설정하여 응력 텐서 계산
+    tensor = stress_tensor_calculator.stress_tensor(x_position, y_position, z_position, 0, chosen_moment, chosen_shear)
     print("응력 텐서:")
     for row in tensor:
         print(["{:.4f}".format(cell) for cell in row])
