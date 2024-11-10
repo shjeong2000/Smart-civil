@@ -1,10 +1,10 @@
 class Beam:
-    def __init__(self, length, width, height, beam_type):
+    def __init__(self, length, width, height):
         self.length = length  # 보의 길이 (m)
         self.width = width / 1000  # 보의 너비 (mm에서 m으로 변환)
         self.height = height / 1000  # 보의 높이 (mm에서 m으로 변환)
         self.I = (self.width * self.height**3) / 12  # 단면적 모멘트 관성
-        self.beam_type = beam_type  # 보의 종류 (단순보, 캔틸레버 보 등)
+        self.beam_type = "단순보"  # 보의 종류를 단순보로 고정
         self.origin = (0, 0, 0)  # 좌측면 정중앙을 원점으로 설정
 
     def display_properties(self):
@@ -129,7 +129,6 @@ class StressTensor:
         self.internal_forces = internal_forces
 
     def axial_stress(self, axial_force):
-        # 축력이 없으면 0으로 가정
         if axial_force == 0:
             return 0
         area = self.beam.width * self.beam.height
@@ -139,7 +138,6 @@ class StressTensor:
         return -(moment * y) / self.beam.I
 
     def shear_stress(self, shear_force, y, z):
-        # 정확한 Q 계산 적용
         Q = (self.beam.width / 2) * ((self.beam.height**2) / 4 - y**2)
         b = self.beam.width if -self.beam.height / 2 < y < self.beam.height / 2 else 0
         if b == 0:
@@ -169,13 +167,12 @@ class StressTensor:
 
 
 def main():
-    beam_type = input("보의 종류를 입력하세요 (단순보, 캔틸레버 보, 연속보, 내민보, 고정보): ")
     length = float(input("보의 길이 (m): "))
     width = float(input("보의 너비 (mm): "))
     height = float(input("보의 높이 (mm): "))
-    beam = Beam(length, width, height, beam_type)
+    beam = Beam(length, width, height)
 
-    support = Support(beam)
+    support = Support(방긋)
     loads = ExternalLoads()
 
     roller_x = float(input("롤러의 x 위치 (m)를 입력하세요: "))
@@ -185,19 +182,19 @@ def main():
     support.set_pin(pin_x)
 
     while True:
-        load_type = input("추가할 외력 종류를 선택하세요 (point_load, point_moment, distributed_load, 종료하려면 'exit'): ")
+        load_type = input("추가할 외력 종류를 선택하세요 (p: point_load, m: point_moment, d: distributed_load, 종료하려면 'exit'): ")
         
-        if load_type == "point_load":
+        if load_type == "p" or load_type == "point_load":
             position = float(input("점 수직 하중 위치 (x in m)를 입력하세요: "))
             magnitude = float(input("점 수직 하중 크기 (kN, 위 방향 양수 / 아래 방향 음수): ")) * 1000
             loads.add_point_load((position, 0, 0), magnitude)
         
-        elif load_type == "point_moment":
+        elif load_type == "m" or load_type == "point_moment":
             position = float(input("점 모멘트 하중 위치 (x in m)를 입력하세요: "))
             magnitude = float(input("점 모멘트 하중 크기 (kN*m, 시계방향 양수 / 반시계방향 음수): "))
             loads.add_point_moment((position, 0, 0), magnitude)
         
-        elif load_type == "distributed_load":
+        elif load_type == "d" or load_type == "distributed_load":
             start_position = float(input("연속 수직 하중 시작 위치 (x in m)를 입력하세요: "))
             end_position = float(input("연속 수직 하중 끝 위치 (x in m)를 입력하세요: "))
             intensity = float(input("연속 수직 하중 세기 (kN/m, 위 방향 양수 / 아래 방향 음수): ")) * 1000
@@ -206,16 +203,17 @@ def main():
         elif load_type == "exit":
             break
         else:
-            print("올바른 외력 종류를 입력하세요.")
+            print("올바른 외력 종류를 입력하세요. (p, m, d 중 선택)")
 
     support.calculate_reactions(loads)
     
     internal_forces = InternalForces(beam, support, loads)
     stress_tensor_calculator = StressTensor(beam, internal_forces)
 
-    x_position = float(input("내력을 계산할 위치 x (m): "))
-    y_position = float(input("내력을 계산할 위치 y (mm): ")) / 1000
-    z_position = float(input("내력을 계산할 위치 z (mm): ")) / 1000
+    position_input = input("내력을 계산할 위치 (x, y, z)를 입력하세요 (예: 1.5, 50, 30): ")
+    x_position, y_position, z_position = map(float, position_input.split(","))
+    y_position /= 1000  # mm to m
+    z_position /= 1000  # mm to m
 
     delta = 1e-5
     shear_left = internal_forces.shear_force(x_position - delta)
@@ -240,7 +238,6 @@ def main():
     print(f"\n선택된 전단력 ({chosen_side}): {chosen_shear:.4f} kN")
     print(f"선택된 전단력을 사용한 굽힘 모멘트: {chosen_moment:.4f} kN*m")
 
-    # 축력(axial_force)을 0으로 설정하여 응력 텐서 계산
     tensor = stress_tensor_calculator.stress_tensor(x_position, y_position, z_position, 0, chosen_moment, chosen_shear)
     print("응력 텐서:")
     for row in tensor:
