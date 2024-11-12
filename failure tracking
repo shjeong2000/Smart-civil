@@ -172,7 +172,7 @@ def main():
     height = float(input("보의 높이 (mm): "))
     beam = Beam(length, width, height)
 
-    support = Support(방긋)
+    support = Support(beam)
     loads = ExternalLoads()
 
     roller_x = float(input("롤러의 x 위치 (m)를 입력하세요: "))
